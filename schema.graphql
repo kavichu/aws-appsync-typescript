@@ -1,0 +1,18 @@
+type Task {
+  id: ID!
+  text: String!
+  owner: ID!
+  createdAt: String!
+}
+
+input TaskInput {
+  text: String!
+}
+
+type Query {
+  getTasks: [ Task! ]
+}
+
+type Mutation {
+  addTask(input: TaskInput!): Task!
+}

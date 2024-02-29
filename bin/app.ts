@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 import 'source-map-support/register';
 import * as cdk from 'aws-cdk-lib';
-import { AwsAppsyncApiTypescriptStack } from '../lib/aws-appsync-api-typescript-stack';
+import { AppSyncStack } from '../lib/appsync-stack';
 
 const app = new cdk.App();
-new AwsAppsyncApiTypescriptStack(app, 'AwsAppsyncApiTypescriptStack', {
+new AppSyncStack(app, 'AppSyncStack', {
   /* If you don't specify 'env', this stack will be environment-agnostic.
    * Account/Region-dependent features and context lookups will not work,
    * but a single synthesized template can be deployed anywhere. */
