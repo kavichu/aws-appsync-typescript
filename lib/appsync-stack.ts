@@ -126,7 +126,11 @@ export class AppSyncStack extends cdk.Stack {
 
     const addTask = new lambda_nodejs.NodejsFunction(this, "AddTaskLambdaFunction", { 
       entry: path.join(__dirname, '../functions/addTask/index.ts'),
+      bundling: {
+        nodeModules: ['ulid'],
+      },
       projectRoot: path.join(__dirname, '../functions/addTask'),
+      depsLockFilePath: path.join(__dirname, '../functions/addTask/package-lock.json'),
       handler: 'addTask',
       runtime: lambda.Runtime.NODEJS_20_X,
       environment: {
