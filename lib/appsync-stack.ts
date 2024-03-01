@@ -48,6 +48,8 @@ export class AppSyncStack extends cdk.Stack {
       ],
     });
 
+    const taskTable = dynamodb.Table.fromTableArn(this, 'TasksTable', cfnTaskTable.attrArn)
+
     const userPool = new cognito.UserPool(this, 'UserPool',
       {
         signInAliases: {
@@ -70,8 +72,6 @@ export class AppSyncStack extends cdk.Stack {
     const userPoolClient = userPool.addClient('UserPoolClient', {
       userPoolClientName: 'web'
     })
-
-    const taskTable = dynamodb.Table.fromTableArn(this, 'TasksTable', cfnTaskTable.attrArn)
 
     const graphqlApi = new appsync.GraphqlApi(this, 'AppSyncApi', {
       name: 'todos-api',
