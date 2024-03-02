@@ -1,3 +1,4 @@
+import { AppSyncResolverEvent , AppSyncIdentityCognito} from "aws-lambda";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { PutCommand, DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
 import { ulid }  from 'ulid'
@@ -5,13 +6,21 @@ import { ulid }  from 'ulid'
 const client = new DynamoDBClient({});
 const documentClient = DynamoDBDocumentClient.from(client);
 
-export const addTask = async (event, context) => {
+type InputArguments = {
+  input: {
+    text: String
+  }
+}
+
+export const addTask = async (event: AppSyncResolverEvent<InputArguments> ) => {
   
   const id  = ulid()
   const createdAt = new Date().toJSON()
+  const identity = event.identity as AppSyncIdentityCognito
+
   const data = {
     id,
-    owner: event.identity.username,
+    owner: identity.username,
     text: event.arguments.input.text,
     createdAt
   }
