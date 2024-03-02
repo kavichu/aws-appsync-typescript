@@ -13,6 +13,8 @@ export function request(context) {
           }
       },
       index: "byOwner",
+      nextToken: context.arguments.nextToken,
+      limit: context.arguments.limit,
       scanIndexForward: true, // true order ASC, false order DESC
       consistentRead: false,
       select: "ALL_ATTRIBUTES"

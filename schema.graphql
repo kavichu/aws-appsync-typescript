@@ -15,7 +15,7 @@ input TaskInput {
 }
 
 type Query {
-  getTasks: TaskConnection!
+  getTasks(limit: Int, nextToken: String): TaskConnection!
 }
 
 type Mutation {
