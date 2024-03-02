@@ -7,3 +7,7 @@ tasks:
       sudo ./aws/install
       npm install -g aws-cdk@2.130.0
       popd
+
+vscode:
+    extensions:
+        - graphql.vscode-graphql
