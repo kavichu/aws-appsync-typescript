@@ -10,4 +10,4 @@ tasks:
 
 vscode:
     extensions:
-        - graphql.vscode-graphql
+        - graphql.vscode-graphql-syntax
