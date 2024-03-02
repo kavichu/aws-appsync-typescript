@@ -5,14 +5,20 @@ type Task {
   createdAt: String!
 }
 
+type TaskConnection {
+	items: [Task!]
+	nextToken: String
+}
+
 input TaskInput {
   text: String!
 }
 
 type Query {
-  getTasks: [ Task! ]
+  getTasks: TaskConnection!
 }
 
 type Mutation {
   addTask(input: TaskInput!): Task!
 }
+

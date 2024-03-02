@@ -20,5 +20,8 @@ export function request(context) {
 }
 
 export function response(context) {
-  return context.result.items
+  return {
+    items: context.result.items,
+    nextToken: context.result.nextToken
+  }
 }
