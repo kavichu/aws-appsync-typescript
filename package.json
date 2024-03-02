@@ -1,8 +1,8 @@
 {
-  "name": "aws-appsync-api-typescript",
+  "name": "aws-appsync-typescript",
   "version": "0.1.0",
   "bin": {
-    "aws-appsync-api-typescript": "bin/aws-appsync-api-typescript.js"
+    "app": "bin/app.js"
   },
   "scripts": {
     "build": "tsc",
