@@ -86,6 +86,8 @@ export class AppSyncStack extends cdk.Stack {
       }
     });
 
+    new cdk.CfnOutput(this, 'GRAPHQLENDPOINT', { value: graphqlApi.graphqlUrl });
+
     const lambdaRole = new iam.Role(this, 'LambdaExecutionRole', {
       assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
       managedPolicies: [
