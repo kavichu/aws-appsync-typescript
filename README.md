@@ -5,3 +5,15 @@
 # Architecture
 
 ![AppSync](images/architecture.png)
+
+# Deploy
+
+```sh
+cdk deploy
+```
+
+# Clean up
+
+```sh
+cdk destroy
+```
