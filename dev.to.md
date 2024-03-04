@@ -13,6 +13,7 @@ We have two functionalities in our api, addTask and getTasks, both of them need 
 In order to solve our current scenario we are going to use AWS IAM, Amazon Cognito, Amazon DynamoDB, AWS Lambda and AWS AppSync, to create our infrastructure we are using CDK (Cloud Development Kit) and TypeScript
 
 # Requirements
+
 - git
 - NodeJS 14 or later, my version is v18.18.0
 - An AWS account and configured credentials
