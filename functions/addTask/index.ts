@@ -29,8 +29,7 @@ export const addTask = async (event: AppSyncResolverEvent<InputArguments> ) => {
     Item: data
   });
 
-  const response = await documentClient.send(command);
-  console.log(response)
+  await documentClient.send(command)
 
   return data
 }

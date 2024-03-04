@@ -6,6 +6,7 @@ import { aws_cognito as cognito } from 'aws-cdk-lib';
 import { aws_appsync as appsync } from 'aws-cdk-lib';
 import { aws_lambda_nodejs as lambda_nodejs } from 'aws-cdk-lib'
 import { aws_lambda as lambda } from 'aws-cdk-lib'
+import { aws_ssm as ssm } from 'aws-cdk-lib'
 import * as path from 'path'
 
 export class AppSyncStack extends cdk.Stack {
@@ -66,6 +67,7 @@ export class AppSyncStack extends cdk.Stack {
           requireDigits: false,
           requireSymbols: false,
         },
+        selfSignUpEnabled: true,
       }
     );
 
@@ -153,6 +155,47 @@ export class AppSyncStack extends cdk.Stack {
       requestMappingTemplate: appsync.MappingTemplate.lambdaRequest(),
       responseMappingTemplate: appsync.MappingTemplate.lambdaResult()
     })
+
+    new ssm.StringParameter(this, "UserPoolIdParameter", {
+        parameterName: "/Application/UserPoolId",
+        stringValue: userPool.userPoolId
+      }
+    )
+
+    new ssm.StringParameter(this, "UserPoolClientIdParameter", {
+        parameterName: "/Application/UserPoolClientId",
+        stringValue: userPoolClient.userPoolClientId
+      }
+    )
+
+    new ssm.StringParameter(this, "GraphQLEndpointUrlParameter", {
+        parameterName: "/Application/GraphQLEndpointUrl",
+        stringValue: graphqlApi.graphqlUrl
+      }
+    )
+
+    const usersTable = new dynamodb.Table(this, 'UsersTable', {
+      partitionKey: {
+        name: 'id',
+        type: dynamodb.AttributeType.STRING,
+      },
+    });
+    usersTable.grantReadWriteData(lambdaRole)
+
+    const postConfirmation = new lambda_nodejs.NodejsFunction(this, "PostConfirmationLambdaFunction", { 
+      entry: path.join(__dirname, '../functions/postConfirmation/index.ts'),
+      handler: 'postConfirmation',
+      runtime: lambda.Runtime.NODEJS_20_X,
+      environment: {
+        'USERS_TABLE': usersTable.tableName
+      },
+      role: lambdaRole,
+      timeout: cdk.Duration.seconds(30)
+    })
+
+    userPool.addTrigger(cognito.UserPoolOperation.POST_CONFIRMATION, 
+      postConfirmation
+    );
 
   }
 }
