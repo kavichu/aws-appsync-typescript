@@ -7,7 +7,9 @@ import { aws_appsync as appsync } from 'aws-cdk-lib';
 import { aws_lambda_nodejs as lambda_nodejs } from 'aws-cdk-lib'
 import { aws_lambda as lambda } from 'aws-cdk-lib'
 import { aws_ssm as ssm } from 'aws-cdk-lib'
+import { aws_s3 as s3 } from 'aws-cdk-lib'
 import * as path from 'path'
+import { BlockPublicAccess } from 'aws-cdk-lib/aws-s3';
 
 export class AppSyncStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -50,6 +52,44 @@ export class AppSyncStack extends cdk.Stack {
     });
 
     const taskTable = dynamodb.Table.fromTableArn(this, 'TasksTable', cfnTaskTable.attrArn)
+
+    const cfnImagesTable = new dynamodb.CfnTable(this, 'CfnImagesTable', {
+      keySchema: [{
+        attributeName: 'id',
+        keyType: 'HASH',
+      }],
+      attributeDefinitions: [
+        {
+          attributeName: 'id',
+          attributeType: 'S',
+        },
+        {
+          attributeName: 'owner',
+          attributeType: 'S',
+        }
+      ],
+      billingMode: 'PAY_PER_REQUEST',
+      globalSecondaryIndexes: [
+        {
+          indexName: 'byOwner',
+          keySchema: [
+            {
+              attributeName: 'owner',
+              keyType: 'HASH',
+            },
+            {
+              attributeName: 'id',
+              keyType: 'RANGE',
+            }
+          ],
+          projection: {
+            projectionType: 'ALL',
+          },
+        }
+      ],
+    });
+
+    const imagesTable = dynamodb.Table.fromTableArn(this, 'ImagesTable', cfnImagesTable.attrArn)
 
     const userPool = new cognito.UserPool(this, 'UserPool',
       {
@@ -196,6 +236,55 @@ export class AppSyncStack extends cdk.Stack {
     userPool.addTrigger(cognito.UserPoolOperation.POST_CONFIRMATION, 
       postConfirmation
     );
+
+    const assets_bucket = new s3.Bucket(this, 'AssetsBucket',
+     {
+      objectOwnership: s3.ObjectOwnership.OBJECT_WRITER,
+      blockPublicAccess: new s3.BlockPublicAccess({ blockPublicAcls: false }),
+      cors: [
+        {
+          id: "corsRule",
+          allowedMethods: [s3.HttpMethods.GET, s3.HttpMethods.POST, s3.HttpMethods.PUT],
+          allowedHeaders: ['*'],
+          allowedOrigins: ['*'],
+          exposedHeaders: [
+            "Access-Control-Allow-Origin"
+          ]
+        } as s3.CorsRule
+      ]
+     }
+    );
+    assets_bucket.grantPut(lambdaRole)
+    imagesTable.grantWriteData(lambdaRole)
+
+    const getImageUploadUrl = new lambda_nodejs.NodejsFunction(this, "GetPresignedImageUrlLambdaFunction", {
+      entry: path.join(__dirname, '../functions/createPresignedPost/index.ts'),
+      bundling: {
+        nodeModules: ['ulid'],
+      },
+      projectRoot: path.join(__dirname, '../functions/createPresignedPost'),
+      depsLockFilePath: path.join(__dirname, '../functions/createPresignedPost/package-lock.json'),
+      handler: 'getImageUploadUrl',
+      runtime: lambda.Runtime.NODEJS_20_X,
+      environment: {
+        IMAGES_TABLE: imagesTable.tableName,
+        ASSETS_BUCKET: assets_bucket.bucketName,
+      },
+      role: lambdaRole,
+      timeout: cdk.Duration.seconds(30)
+    })
+
+    const getImageUploadUrlDataSource = new appsync.LambdaDataSource(this, "GetImageUploadUrlDataSource", {
+      api: graphqlApi,
+      lambdaFunction: getImageUploadUrl
+    })
+
+    getImageUploadUrlDataSource.createResolver("GetImageUploadUrlResolver", {
+      typeName: 'Query',
+      fieldName: 'getImageUploadUrl',
+      requestMappingTemplate: appsync.MappingTemplate.lambdaRequest(),
+      responseMappingTemplate: appsync.MappingTemplate.lambdaResult()
+    })
 
   }
 }

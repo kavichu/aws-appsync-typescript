@@ -14,11 +14,26 @@ input TaskInput {
   text: String!
 }
 
+input ImageInput {
+  filename: String!
+  contentType: String!
+}
+
 type Query {
   getTasks(limit: Int, nextToken: String): TaskConnection!
+  getImageUploadUrl(input: ImageInput!): PresignedImageUrl!
 }
 
 type Mutation {
   addTask(input: TaskInput!): Task!
 }
 
+type PresignedField {
+  name: String!
+  value: String!
+}
+
+type PresignedImageUrl {
+  fields: [PresignedField!]!
+  url: String!
+}
