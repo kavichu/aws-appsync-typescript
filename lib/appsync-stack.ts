@@ -5,11 +5,17 @@ import { aws_dynamodb as dynamodb } from 'aws-cdk-lib';
 import { aws_cognito as cognito } from 'aws-cdk-lib';
 import { aws_appsync as appsync } from 'aws-cdk-lib';
 import { aws_lambda_nodejs as lambda_nodejs } from 'aws-cdk-lib'
-import { aws_lambda as lambda } from 'aws-cdk-lib'
+
+import { aws_lambda as lambda_ } from 'aws-cdk-lib'
 import { aws_ssm as ssm } from 'aws-cdk-lib'
 import { aws_s3 as s3 } from 'aws-cdk-lib'
 import * as path from 'path'
+
 import { BlockPublicAccess } from 'aws-cdk-lib/aws-s3';
+
+import * as lambda_python from '@aws-cdk/aws-lambda-python-alpha'
+import { LambdaDestination } from 'aws-cdk-lib/aws-s3-notifications';
+import { DockerImage } from 'aws-cdk-lib/core/lib'
 
 export class AppSyncStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -176,7 +182,7 @@ export class AppSyncStack extends cdk.Stack {
       projectRoot: path.join(__dirname, '../functions/addTask'),
       depsLockFilePath: path.join(__dirname, '../functions/addTask/package-lock.json'),
       handler: 'addTask',
-      runtime: lambda.Runtime.NODEJS_20_X,
+      runtime: lambda_.Runtime.NODEJS_20_X,
       environment: {
         'TASKS_TABLE': taskTable.tableName
       },
@@ -225,7 +231,7 @@ export class AppSyncStack extends cdk.Stack {
     const postConfirmation = new lambda_nodejs.NodejsFunction(this, "PostConfirmationLambdaFunction", { 
       entry: path.join(__dirname, '../functions/postConfirmation/index.ts'),
       handler: 'postConfirmation',
-      runtime: lambda.Runtime.NODEJS_20_X,
+      runtime: lambda_.Runtime.NODEJS_20_X,
       environment: {
         'USERS_TABLE': usersTable.tableName
       },
@@ -237,7 +243,7 @@ export class AppSyncStack extends cdk.Stack {
       postConfirmation
     );
 
-    const assets_bucket = new s3.Bucket(this, 'AssetsBucket',
+    const assetsBucket = new s3.Bucket(this, 'AssetsBucket',
      {
       objectOwnership: s3.ObjectOwnership.OBJECT_WRITER,
       blockPublicAccess: new s3.BlockPublicAccess({ blockPublicAcls: false }),
@@ -254,8 +260,10 @@ export class AppSyncStack extends cdk.Stack {
       ]
      }
     );
-    assets_bucket.grantPut(lambdaRole)
-    imagesTable.grantWriteData(lambdaRole)
+    assetsBucket.grantPut(lambdaRole)
+    assetsBucket.grantPutAcl(lambdaRole)
+    assetsBucket.grantReadWrite(lambdaRole)
+    imagesTable.grantReadWriteData(lambdaRole)
 
     const getImageUploadUrl = new lambda_nodejs.NodejsFunction(this, "GetPresignedImageUrlLambdaFunction", {
       entry: path.join(__dirname, '../functions/createPresignedPost/index.ts'),
@@ -265,10 +273,10 @@ export class AppSyncStack extends cdk.Stack {
       projectRoot: path.join(__dirname, '../functions/createPresignedPost'),
       depsLockFilePath: path.join(__dirname, '../functions/createPresignedPost/package-lock.json'),
       handler: 'getImageUploadUrl',
-      runtime: lambda.Runtime.NODEJS_20_X,
+      runtime: lambda_.Runtime.NODEJS_20_X,
       environment: {
         IMAGES_TABLE: imagesTable.tableName,
-        ASSETS_BUCKET: assets_bucket.bucketName,
+        ASSETS_BUCKET: assetsBucket.bucketName,
       },
       role: lambdaRole,
       timeout: cdk.Duration.seconds(30)
@@ -285,6 +293,31 @@ export class AppSyncStack extends cdk.Stack {
       requestMappingTemplate: appsync.MappingTemplate.lambdaRequest(),
       responseMappingTemplate: appsync.MappingTemplate.lambdaResult()
     })
+
+    
+    lambdaRole.attachInlinePolicy(new iam.Policy(this, 'RekognitionDetectModerationLabelsPolicy', {
+      statements: [new iam.PolicyStatement({
+        actions: ['rekognition:DetectModerationLabels'],
+        resources: ["*"],
+      })],
+    }));
+
+    const imageModerationFunction = new lambda_python.PythonFunction(this, 'ImageModerationFunction', {
+      entry: path.join(__dirname, '../functions/imageModeration'),
+      // the runtime is for pillow https://pillow.readthedocs.io/en/latest/installation/platform-support.html
+      runtime: lambda_.Runtime.PYTHON_3_9,
+      index: 'handler.py',
+      handler: 'detect_moderation_labels',
+      environment: {
+        IMAGES_TABLE: imagesTable.tableName,
+        ASSETS_BUCKET: assetsBucket.bucketName,
+      },
+      role: lambdaRole,
+      timeout: cdk.Duration.seconds(30),
+      memorySize: 256,
+    });
+
+    assetsBucket.addEventNotification(s3.EventType.OBJECT_CREATED, new LambdaDestination(imageModerationFunction), { prefix: "uploaded-images/" })
 
   }
 }
