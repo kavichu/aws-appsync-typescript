@@ -8,10 +8,13 @@ from botocore.exceptions import ClientError
 from tempfile import SpooledTemporaryFile
 import boto3
 from PIL import Image, ImageFilter, ImageOps
+from pillow_heif import register_heif_opener
+
 from boto3.dynamodb.conditions import Key, Attr
 from botocore.paginate import TokenEncoder
 import blurhash
 
+register_heif_opener()
 
 s3 = boto3.resource('s3')
 dynamodb = boto3.resource('dynamodb')
@@ -127,33 +130,31 @@ def detect_moderation_labels(event, _):
                 'ACL': 'public-read',
                 'ContentType': "image/png"
             }
-            # set the cursor to the start of the file
-            image_file.seek(0)
             image_key = f"images/{image_id}.png"
-            assets_bucket.upload_fileobj(
-                image_file, image_key, ExtraArgs=extra_args)
 
+            # Update image in table first
             public_image_url = f"https://{os.environ['ASSETS_BUCKET']}.s3.amazonaws.com/{image_key}"
-
-            print("public_image_url: ", public_image_url)
             response = images_table.query(
                 KeyConditionExpression=Key("id").eq(image_id)
             )
-
             image = response["Items"][0]
             image["status"] = "public"
             image["url"] = public_image_url
             image["width"]= width
             image["height"]= height
-            with Image.open(io.BytesIO(image_bytes)) as image_file:
-                image_blur_hash = blurhash.encode(image_file, x_components=4, y_components=4)
-                image["blurhash"]= image_blur_hash
-
+            with Image.open(io.BytesIO(image_bytes)) as image_file_blurhash:
+                image_blur_hash = blurhash.encode(image_file_blurhash, x_components=4, y_components=4)
+                image["blurhash"] = image_blur_hash
             images_table.put_item(Item=image)
 
-            print("images_table.put_item(Item=image): ", image)
+            # Upload image to bucket
+            # set the cursor to the start of the file
+            image_file.seek(0)
+            assets_bucket.upload_fileobj(
+                image_file, image_key, ExtraArgs=extra_args)
 
-            print("response: ", response)
+            print("public_image_url: ", public_image_url)
+            print("images_table.put_item(Item=image): ", image)
 
     except ClientError as error:
         print("error: ", error)

@@ -5,17 +5,12 @@ import { aws_dynamodb as dynamodb } from 'aws-cdk-lib';
 import { aws_cognito as cognito } from 'aws-cdk-lib';
 import { aws_appsync as appsync } from 'aws-cdk-lib';
 import { aws_lambda_nodejs as lambda_nodejs } from 'aws-cdk-lib'
-
+import * as lambda_python from '@aws-cdk/aws-lambda-python-alpha'
 import { aws_lambda as lambda_ } from 'aws-cdk-lib'
+import { LambdaDestination } from 'aws-cdk-lib/aws-s3-notifications';
 import { aws_ssm as ssm } from 'aws-cdk-lib'
 import { aws_s3 as s3 } from 'aws-cdk-lib'
 import * as path from 'path'
-
-import { BlockPublicAccess } from 'aws-cdk-lib/aws-s3';
-
-import * as lambda_python from '@aws-cdk/aws-lambda-python-alpha'
-import { LambdaDestination } from 'aws-cdk-lib/aws-s3-notifications';
-import { DockerImage } from 'aws-cdk-lib/core/lib'
 
 export class AppSyncStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -297,7 +292,10 @@ export class AppSyncStack extends cdk.Stack {
     
     lambdaRole.attachInlinePolicy(new iam.Policy(this, 'RekognitionDetectModerationLabelsPolicy', {
       statements: [new iam.PolicyStatement({
-        actions: ['rekognition:DetectModerationLabels'],
+        actions: [
+          'rekognition:DetectModerationLabels',
+          'rekognition:DetectLabels'
+        ],
         resources: ["*"],
       })],
     }));
@@ -313,11 +311,28 @@ export class AppSyncStack extends cdk.Stack {
         ASSETS_BUCKET: assetsBucket.bucketName,
       },
       role: lambdaRole,
-      timeout: cdk.Duration.seconds(30),
+      timeout: cdk.Duration.seconds(60), // Task timed out after 30.07 seconds
       memorySize: 256,
     });
 
     assetsBucket.addEventNotification(s3.EventType.OBJECT_CREATED, new LambdaDestination(imageModerationFunction), { prefix: "uploaded-images/" })
+
+    const imageRecognitionFunction = new lambda_python.PythonFunction(this, 'ImageRecognitionFunction', {
+      entry: path.join(__dirname, '../functions/imageRecognition'),
+      // the runtime is for pillow https://pillow.readthedocs.io/en/latest/installation/platform-support.html
+      runtime: lambda_.Runtime.PYTHON_3_9,
+      index: 'handler.py',
+      handler: 'detect_image_labels',
+      environment: {
+        IMAGES_TABLE: imagesTable.tableName,
+        ASSETS_BUCKET: assetsBucket.bucketName,
+      },
+      role: lambdaRole,
+      timeout: cdk.Duration.seconds(60), // Task timed out after 30.07 seconds
+      memorySize: 256,
+    });
+
+    assetsBucket.addEventNotification(s3.EventType.OBJECT_CREATED, new LambdaDestination(imageRecognitionFunction), { prefix: "images/" })
 
   }
 }
