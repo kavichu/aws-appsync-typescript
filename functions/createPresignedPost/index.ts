@@ -45,9 +45,6 @@ export const getImageUploadUrl = async (event: AppSyncResolverEvent<InputArgumen
   }
   const { url, fields } = await createPresignedPost(s3Client, presignedPostOptions);
 
-  console.log("url: ", url)
-  console.log("fields: ", fields)
-
   const newFields = Object.keys(fields).map(fieldName => ({name: fieldName, value: fields[fieldName]}))
 
   const data = {
@@ -60,7 +57,6 @@ export const getImageUploadUrl = async (event: AppSyncResolverEvent<InputArgumen
     createdAt
   }
 
-  console.log("data: ", data)
   const command = new PutCommand({
     TableName: process.env.IMAGES_TABLE,
     Item: data
@@ -72,6 +68,6 @@ export const getImageUploadUrl = async (event: AppSyncResolverEvent<InputArgumen
     url,
     fields: newFields
   }
-  console.log("result: ", result)
+
   return result
 }
