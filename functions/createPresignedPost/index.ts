@@ -1,14 +1,13 @@
-const s3Client = new S3Client({ region: "us-east-1" });
-
 import { AppSyncResolverEvent , AppSyncIdentityCognito} from "aws-lambda";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { PutCommand, DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
-import { PresignedPostOptions, createPresignedPost as createPresignedPost } from "@aws-sdk/s3-presigned-post";
+import { PresignedPostOptions, createPresignedPost } from "@aws-sdk/s3-presigned-post";
 import { S3Client } from "@aws-sdk/client-s3";
 import { ulid }  from 'ulid'
 import * as path from 'path';
 import { Conditions } from "@aws-sdk/s3-presigned-post/dist-types/types";
 
+const s3Client = new S3Client({ region: "us-east-1" });
 const client = new DynamoDBClient({});
 const documentClient = DynamoDBDocumentClient.from(client);
 
