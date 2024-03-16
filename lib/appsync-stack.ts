@@ -55,10 +55,16 @@ export class AppSyncStack extends cdk.Stack {
     const tasksTable = dynamodb.Table.fromTableArn(this, 'TasksTable', cfnTasksTable.attrArn)
 
     const cfnImagesTable = new dynamodb.CfnTable(this, 'CfnImagesTable', {
-      keySchema: [{
-        attributeName: 'id',
-        keyType: 'HASH',
-      }],
+      keySchema: [
+        {
+          attributeName: 'id',
+          keyType: 'HASH',
+        },
+        {
+          attributeName: 'createdAt',
+          keyType: 'RANGE',
+        }
+      ],
       attributeDefinitions: [
         {
           attributeName: 'id',
@@ -66,6 +72,10 @@ export class AppSyncStack extends cdk.Stack {
         },
         {
           attributeName: 'owner',
+          attributeType: 'S',
+        },
+        {
+          attributeName: 'createdAt',
           attributeType: 'S',
         }
       ],
@@ -157,7 +167,7 @@ export class AppSyncStack extends cdk.Stack {
     })
     tasksDataSourceRole.attachInlinePolicy(queryIndexPolicy)
 
-    const taskTableDataSource = new appsync.DynamoDbDataSource(this, 'TaskSTableDataSource', {
+    const taskTableDataSource = new appsync.DynamoDbDataSource(this, 'TasksTableDataSource', {
       table: tasksTable,
       serviceRole: tasksDataSourceRole,
       api: graphqlApi

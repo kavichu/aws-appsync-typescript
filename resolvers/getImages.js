@@ -16,7 +16,7 @@ export function request(context) {
     nextToken: context.arguments.nextToken,
     consistentRead: false,
     select: "ALL_ATTRIBUTES",
-    scanIndexForward: true
+    scanIndexForward: false
   }
 
   return dynamodb.scan(

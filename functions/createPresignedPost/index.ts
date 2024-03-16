@@ -21,7 +21,7 @@ type InputArguments = {
 export const getImageUploadUrl = async (event: AppSyncResolverEvent<InputArguments> ) => {
   
   const id  = ulid()
-  const createdAt = new Date().toJSON()
+  const createdAt = new Date().toISOString();
   const identity = event.identity as AppSyncIdentityCognito
 
   const extension  = path.extname(event.arguments.input.filename)
