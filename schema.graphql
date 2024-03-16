@@ -1,3 +1,27 @@
+type KeyValue {
+  name: String!
+}
+
+type BoundingBox {
+  height: Float!
+  left: Float!
+  top: Float!
+  width: Float!
+}
+
+type Instance {
+  confidence: Float!
+  boundingBox: BoundingBox!
+}
+
+type Label {
+  name: String!
+  parents: [KeyValue]
+  categories: [KeyValue]
+  confidence: Float!
+  instances: [Instance]
+}
+
 type Task {
   id: ID!
   text: String!
@@ -14,6 +38,22 @@ input TaskInput {
   text: String!
 }
 
+type Image {
+  id: ID!
+  url: String!
+  owner: ID!
+  labels: [Label]
+  blurhash: String
+  width: Int
+  height: Int
+  createdAt: String!
+}
+
+type ImageConnection {
+  items: [Image!]
+  nextToken: String
+}
+
 input ImageInput {
   filename: String!
   contentType: String!
@@ -22,6 +62,8 @@ input ImageInput {
 type Query {
   getTasks(limit: Int, nextToken: String): TaskConnection!
   getImageUploadUrl(input: ImageInput!): PresignedImageUrl!
+  getImage(imageId: ID!): Image!
+  getImages(limit: Int, nextToken: String): ImageConnection!
 }
 
 type Mutation {
@@ -34,6 +76,7 @@ type PresignedField {
 }
 
 type PresignedImageUrl {
+  id: ID!
   fields: [PresignedField!]!
   url: String!
 }

@@ -16,7 +16,7 @@ export class AppSyncStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    const cfnTaskTable = new dynamodb.CfnTable(this, 'CfnTasksTable', {
+    const cfnTasksTable = new dynamodb.CfnTable(this, 'CfnTasksTable', {
       keySchema: [{
         attributeName: 'id',
         keyType: 'HASH',
@@ -52,7 +52,7 @@ export class AppSyncStack extends cdk.Stack {
       ],
     });
 
-    const taskTable = dynamodb.Table.fromTableArn(this, 'TasksTable', cfnTaskTable.attrArn)
+    const tasksTable = dynamodb.Table.fromTableArn(this, 'TasksTable', cfnTasksTable.attrArn)
 
     const cfnImagesTable = new dynamodb.CfnTable(this, 'CfnImagesTable', {
       keySchema: [{
@@ -137,12 +137,13 @@ export class AppSyncStack extends cdk.Stack {
         iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaBasicExecutionRole')
       ]
     })
-    taskTable.grantReadWriteData(lambdaRole)
+    tasksTable.grantReadWriteData(lambdaRole)
     
     const tasksDataSourceRole = new iam.Role(this, 'TasksDataSourceRole', {
       assumedBy: new iam.ServicePrincipal('appsync.amazonaws.com')
     })
-    taskTable.grantReadWriteData(tasksDataSourceRole)
+    tasksTable.grantReadWriteData(tasksDataSourceRole)
+    imagesTable.grantReadWriteData(tasksDataSourceRole)
 
     const queryIndexPolicy = new iam.Policy(this, "QueryIndexByOwnerPolicy", {
       policyName: "QueryIndexByOwnerPolicy",
@@ -150,14 +151,14 @@ export class AppSyncStack extends cdk.Stack {
         iam.PolicyStatement.fromJson({
             Effect: 'Allow',
             Action: 'dynamodb:Query',
-            Resource: `${taskTable.tableArn}/index/byOwner`
+            Resource: `${tasksTable.tableArn}/index/byOwner`
         })
       ]
     })
     tasksDataSourceRole.attachInlinePolicy(queryIndexPolicy)
 
-    const taskTableDataSource = new appsync.DynamoDbDataSource(this, 'TaskTableDataSource', {
-      table: taskTable,
+    const taskTableDataSource = new appsync.DynamoDbDataSource(this, 'TaskSTableDataSource', {
+      table: tasksTable,
       serviceRole: tasksDataSourceRole,
       api: graphqlApi
     })
@@ -179,7 +180,7 @@ export class AppSyncStack extends cdk.Stack {
       handler: 'addTask',
       runtime: lambda_.Runtime.NODEJS_20_X,
       environment: {
-        'TASKS_TABLE': taskTable.tableName
+        'TASKS_TABLE': tasksTable.tableName
       },
       role: lambdaRole,
       timeout: cdk.Duration.seconds(30)
@@ -333,6 +334,49 @@ export class AppSyncStack extends cdk.Stack {
     });
 
     assetsBucket.addEventNotification(s3.EventType.OBJECT_CREATED, new LambdaDestination(imageRecognitionFunction), { prefix: "images/" })
+
+    //  Starts here
+    const imagesDataSourceRole = new iam.Role(this, 'ImagesDataSourceRole', {
+      assumedBy: new iam.ServicePrincipal('appsync.amazonaws.com')
+    })
+    imagesTable.grantReadWriteData(tasksDataSourceRole)
+
+    const imagesQueryIndexPolicy = new iam.Policy(this, "ImagesQueryIndexByOwnerPolicy", {
+      policyName: "ImagesQueryIndexByOwnerPolicy",
+      statements: [
+        iam.PolicyStatement.fromJson({
+            Effect: 'Allow',
+            Action: 'dynamodb:Query',
+            Resource: `${imagesTable.tableArn}/index/byOwner`
+        }),
+        iam.PolicyStatement.fromJson({
+          Effect: 'Allow',
+          Action: 'dynamodb:Scan',
+          Resource: `${imagesTable.tableArn}`
+        })
+      ]
+    })
+    imagesDataSourceRole.attachInlinePolicy(imagesQueryIndexPolicy)
+
+    const imagesTableDataSource = new appsync.DynamoDbDataSource(this, 'ImagesTableDataSource', {
+      table: imagesTable,
+      serviceRole: imagesDataSourceRole,
+      api: graphqlApi
+    })
+
+    imagesTableDataSource.createResolver('getImagesResolver', {
+      fieldName: 'getImages',
+      typeName: 'Query',
+      code: appsync.Code.fromAsset(path.join(__dirname, '../resolvers/getImages.js')),
+      runtime: appsync.FunctionRuntime.JS_1_0_0
+    })
+
+    imagesTableDataSource.createResolver('getImageResolver', {
+      fieldName: 'getImage',
+      typeName: 'Query',
+      code: appsync.Code.fromAsset(path.join(__dirname, '../resolvers/getImage.js')),
+      runtime: appsync.FunctionRuntime.JS_1_0_0
+    })
 
   }
 }

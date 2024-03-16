@@ -64,6 +64,7 @@ export const getImageUploadUrl = async (event: AppSyncResolverEvent<InputArgumen
   await documentClient.send(command)
 
   const result = {
+    id,
     url,
     fields: newFields
   }
