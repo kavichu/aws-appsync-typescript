@@ -2,6 +2,10 @@ import * as dynamodb from '@aws-appsync/utils/dynamodb'
 
 export function request(context) {
 
+  if(context.arguments.limit > 25 ) {
+    util.error("max length is 25")
+  }
+
   const payload = {
     filter: {
       "status": {
@@ -15,11 +19,9 @@ export function request(context) {
     scanIndexForward: true
   }
 
-  const response = dynamodb.scan(
+  return dynamodb.scan(
     payload
   )
-
-  return response
 }
 
 export function response(context) {

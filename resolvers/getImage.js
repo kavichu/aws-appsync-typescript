@@ -1,8 +1,7 @@
 import * as dynamodb from '@aws-appsync/utils/dynamodb'
 
 export function request(context) {
-  const response = dynamodb.get({ key: { id: context.arguments.imageId } });
-  return response
+  return dynamodb.get({ key: { id: context.arguments.imageId } });
 }
 
 export function response(context) {

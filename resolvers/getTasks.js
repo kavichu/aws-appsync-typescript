@@ -1,6 +1,11 @@
 import { util } from '@aws-appsync/utils';
 
 export function request(context) {
+
+  if(context.arguments.limit > 25 ) {
+    util.error("max length is 25")
+  }
+
   return {
       operation: "Query",
       query: {
