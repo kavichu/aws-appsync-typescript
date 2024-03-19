@@ -67,7 +67,6 @@ def intersection(lst1, lst2):
 
 def detect_image_labels(event, _):
     """detect labels"""
-    print("event: ", event)
 
     object_key = event["Records"][0]["s3"]["object"]["key"]
 
@@ -94,19 +93,14 @@ def detect_image_labels(event, _):
 
     # Add the labels to the original image
     original_image = response["Items"][0]
-    print("original_image= ", original_image)
     original_image["labels"] = labels
+    # delete the presigned url fields
     del  original_image["fields"]
 
-    print("labels= ", labels)
-    print("original_image= ", original_image)
-
     original_image = json.loads(json.dumps(original_image, cls=DecimalEncoder), parse_float=decimal.Decimal)
+
     try:
-        print("original_image: ", original_image)
-        print("original_image: ", original_image)
-        response = images_table.put_item(Item=original_image)
-        print("images_table.put_item(Item=original_image)", response)
+        images_table.put_item(Item=original_image)
     except ClientError as error:
         print("images_table.put_item error: ", error)
 

@@ -34,7 +34,6 @@ def blur_image(image_data, file_format):
 
 def detect_moderation_labels(event, _):
     """detect_moderation_labels"""
-    print("event: ", event)
     # extensions = ['/jpg', '/jpeg', '/png']
     # trigger /uploads/images/{image_id}.[image_extension]
     object_key = event["Records"][0]["s3"]["object"]["key"]
@@ -51,8 +50,6 @@ def detect_moderation_labels(event, _):
         image_key = f"uploaded-images/{image_id}.{file_extension}"
         assets_bucket.download_fileobj(image_key, image_file)
         image_file.seek(0)
-
-        print("#####image_key: ", image_key)
 
         # get size of original image
         original_image = Image.open(io.BytesIO(image_file.read()))
@@ -75,8 +72,6 @@ def detect_moderation_labels(event, _):
         # Image to bytes
         image_bytes = image_file.read()
 
-        print("#####image_bytes: ", len(image_bytes))
-
         # Detect moderation content in the image with Rekognition
         response = rekognition.detect_moderation_labels(
           Image={
@@ -87,10 +82,9 @@ def detect_moderation_labels(event, _):
 
         # Blur the image if moderation labels are present
         labels = response['ModerationLabels']
-        print("labels: ", labels)
 
-        if len(labels):
-            print("labels = ", labels)
+        if len(labels) > 0:
+
             image_bytes = blur_image(image_bytes, file_extension)
 
             # save as public image
@@ -105,25 +99,20 @@ def detect_moderation_labels(event, _):
                 'ContentType': "image/png"
             }
             image_key = f"images/{image_id}.png"
-            assets_bucket.upload_fileobj(
-                image_file, image_key, ExtraArgs=extra_args)
-            print("assets_bucket.upload_fileobj: ", True)
 
+            # Update image in table first
             public_image_url = f"https://{os.environ['ASSETS_BUCKET']}.s3.amazonaws.com/{image_key}"
-
-            print("public_image_url: ", public_image_url)
-
             response = images_table.query(
                 KeyConditionExpression=Key("id").eq(image_id)
             )
-
             image = response["Items"][0]
             image["status"] = "public"
             image["url"] = public_image_url
-
             images_table.put_item(Item=image)
 
-            print("images_table.put_item(Item=image): ", image)
+            assets_bucket.upload_fileobj(
+                image_file, image_key, ExtraArgs=extra_args)
+
         else:
             # Upload image to S3 with public read access
             extra_args = {
@@ -152,9 +141,6 @@ def detect_moderation_labels(event, _):
             image_file.seek(0)
             assets_bucket.upload_fileobj(
                 image_file, image_key, ExtraArgs=extra_args)
-
-            print("public_image_url: ", public_image_url)
-            print("images_table.put_item(Item=image): ", image)
 
     except ClientError as error:
         print("error: ", error)
