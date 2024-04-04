@@ -22,19 +22,19 @@ type Label {
   instances: [Instance]
 }
 
-type Task {
+type Tweet {
   id: ID!
   text: String!
   owner: ID!
   createdAt: String!
 }
 
-type TaskConnection {
-	items: [Task!]
+type TweetConnection {
+	items: [Tweet!]
 	nextToken: String
 }
 
-input TaskInput {
+input TweetInput {
   text: String!
 }
 
@@ -60,14 +60,14 @@ input ImageInput {
 }
 
 type Query {
-  getTasks(limit: Int, nextToken: String): TaskConnection!
+  getTweets(limit: Int, nextToken: String): TweetConnection!
   getImageUploadUrl(input: ImageInput!): PresignedImageUrl!
   getImage(imageId: ID!): Image!
   getImages(limit: Int, nextToken: String): ImageConnection!
 }
 
 type Mutation {
-  addTask(input: TaskInput!): Task!
+  tweet(input: TweetInput!): Tweet!
 }
 
 type PresignedField {

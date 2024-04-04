@@ -12,7 +12,7 @@ type InputArguments = {
   }
 }
 
-export const addTask = async (event: AppSyncResolverEvent<InputArguments> ) => {
+export const tweet = async (event: AppSyncResolverEvent<InputArguments> ) => {
   
   const id  = ulid()
   const createdAt = new Date().toJSON()
@@ -25,7 +25,7 @@ export const addTask = async (event: AppSyncResolverEvent<InputArguments> ) => {
     createdAt
   }
   const command = new PutCommand({
-    TableName: process.env.TASKS_TABLE,
+    TableName: process.env.TWEETS_TABLE,
     Item: data
   });
 

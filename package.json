@@ -1,5 +1,5 @@
 {
-  "name": "aws-appsync-typescript",
+  "name": "serverless-workshop",
   "version": "0.1.0",
   "bin": {
     "app": "bin/app.js"
