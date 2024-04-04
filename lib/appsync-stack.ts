@@ -31,7 +31,12 @@ export class AppSyncStack extends cdk.Stack {
           userPoolConfig: {
             userPool: props?.userPool!
           }
-        }
+        },
+        additionalAuthorizationModes: [
+          {
+            authorizationType: appsync.AuthorizationType.IAM,
+          }
+        ]
       }
     });
 
